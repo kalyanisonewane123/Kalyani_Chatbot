@@ -1,59 +1,79 @@
-import streamlit as st
 import os
+from dotenv import find_dotenv, load_dotenv
+import streamlit as st
+from typing import Generator
 from groq import Groq
-import random
 
-from langchain.chains import ConversationChain
-from langchain.chains.conversation.memory import ConversationBufferWindowMemory
-from langchain_groq import ChatGroq
-from langchain.prompts import PromptTemplate
-from dotenv import load_dotenv
-import os 
+ 
 
-load_dotenv()
+st.subheader("Marathi News Generator", divider="rainbow")
 
-groq_api_key = os.environ['GROQ_API_KEY']
+client = Groq(
+    api_key=os.environ['GROQ_API_KEY'],
+)
 
-def main():
+# Initialize chat history and selected model
+if "messages" not in st.session_state:
+    st.session_state.messages = []
 
-    st.title("Groq Chat App")
+if "selected_model" not in st.session_state:
+    st.session_state.selected_model = None
 
-    # Add customization options to the sidebar
-    
-    model = "llama-3.1-70b-versatile"
+# Define model details
+models = "llama-3.1-70b-versatile"
+ 
 
-    conversational_memory_length = 20
+max_tokens_range =  8000
 
-    memory=ConversationBufferWindowMemory(k=conversational_memory_length)
+ 
 
-    user_question = st.text_area("Ask a question:")
+# Display chat messages from history on app rerun
+for message in st.session_state.messages:
+    avatar = "🤖" if message["role"] == "assistant" else "🕺"
+    with st.chat_message(message["role"], avatar=avatar):
+        st.markdown(message["content"])
 
-    # session state variable
-    if 'chat_history' not in st.session_state:
-        st.session_state.chat_history=[]
+
+def generate_chat_responses(chat_completion) -> Generator[str, None, None]:
+    """Yield chat response content from the Groq API response."""
+    for chunk in chat_completion:
+        if chunk.choices[0].delta.content:
+            yield chunk.choices[0].delta.content
+
+
+if prompt := st.chat_input("Enter your prompt here..."):
+    st.session_state.messages.append({"role": "user", "content": prompt})
+
+    with st.chat_message("user", avatar="🕺"):  
+        st.markdown(prompt)
+
+    # Fetch response from Groq API
+    try:
+        chat_completion = client.chat.completions.create(
+            model=models,
+            messages=[
+                {"role": m["role"], "content": m["content"]}
+                for m in st.session_state.messages
+            ],
+            max_tokens=max_tokens_range,
+            stream=True,
+        )
+
+        # Use the generator function with st.write_stream
+        with st.chat_message("assistant", avatar="🤖"):
+            chat_responses_generator = generate_chat_responses(chat_completion)
+            full_response = st.write_stream(chat_responses_generator)
+    except Exception as e:
+        st.error(e, icon="🚨")
+
+    # Append the full response to session_state.messages
+    if isinstance(full_response, str):
+        st.session_state.messages.append(
+            {"role": "assistant", "content": full_response}
+        )
     else:
-        for message in st.session_state.chat_history:
-            memory.save_context({'input':message['human']},{'output':message['AI']})
-
-
-    # Initialize Groq Langchain chat object and conversation
-    groq_chat = ChatGroq(
-            groq_api_key=groq_api_key, 
-            model_name=model, temperature=0.4
-    )
-
-    conversation = ConversationChain(
-            llm=groq_chat,
-            memory=memory
-    )
-       
-    if st.button("Generate"):
-
-        if user_question:
-            response = conversation(user_question)
-            message = {'human':user_question,'AI':response['response']}
-            st.session_state.chat_history.append(message)
-            st.write("Chatbot:", response['response'])
-
-if __name__ == "__main__":
-    main()
+        # Handle the case where full_response is not a string
+        combined_response = "\n".join(str(item) for item in full_response)
+        st.session_state.messages.append(
+            {"role": "assistant", "content": combined_response}
+        )
