@@ -6,7 +6,7 @@ from groq import Groq
 
  
 
-st.subheader("Marathi News Generator", divider="rainbow")
+st.subheader("KalyaniBot", divider="rainbow")
 
 client = Groq(
     api_key=os.environ['GROQ_API_KEY'],
