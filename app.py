@@ -4,7 +4,7 @@ import streamlit as st
 from typing import Generator
 from groq import Groq
 
-st.subheader("KalyaniBot", divider="rainbow")
+st.subheader("chatBot", divider="rainbow")
 
 client = Groq(
     api_key=os.environ['GROQ_API_KEY'],
