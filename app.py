@@ -18,10 +18,10 @@ if "selected_model" not in st.session_state:
     st.session_state.selected_model = None
 
 # Define model details
-models = "llama-3.1-70b-versatile"
+models = "deepseek-r1-distill-llama-70b"
  
 
-max_tokens_range =  8000
+max_tokens_range =  100000
 
  
 
