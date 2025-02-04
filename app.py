@@ -21,7 +21,7 @@ if "selected_model" not in st.session_state:
 models = "deepseek-r1-distill-llama-70b"
  
 
-max_tokens_range =  100000
+max_tokens_range =  10000
 
  
 
